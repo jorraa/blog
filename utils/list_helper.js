@@ -46,45 +46,27 @@ const mostLikes = (blogs) => {
   const pickedArr = blogs.map(blog => [blog.author, blog.likes])
   // collecting under author
   const likesObj = lodash.groupBy(pickedArr, (arr) => arr[0])
-  console.log('likesObj', likesObj)
 
-  let resArr = []
-  Object.entries(likesObj).forEach( o => {
-    // console.log('OOO', o)
-    let sum = 0
-    Object.values(o[1]).forEach(v => {
-      sum += v[1]
+  // no power left to search lib for next two
+  const calcLikes = (authorEntry, sum) => {
+    Object.values(authorEntry[1]).forEach(v => sum += v[1])
+    return sum
+  }
+
+  const createAuthorLikesArr = (likesObj) => {
+    let resp = []
+    Object.entries(likesObj).forEach( authorEntry => {
+      authorEntry[1] = calcLikes(authorEntry, 0)
+      resp.push(authorEntry)
     })
-    //console.log('sum',sum)
-    o[1] = sum
-    //console.log('OOOsum', o)
-    resArr.push(o)
-  })
-  console.log('resArr----', resArr)
-  const likesArray = resArr.map(author => author[1])
-  const maxCount = Math.max(...likesArray)
-  console.log('max', maxCount)
-  const result = resArr.find(o => o[1] === maxCount)
-  console.log('found', result)
+    return resp
+  }
+  const authorLikes = createAuthorLikesArr(likesObj)
 
+  const maxCount = Math.max(...authorLikes.map(author => author[1]))
+  const result = authorLikes.find(o => o[1] === maxCount)
 
-  //console.log('reduced', reduced2)
-
-
-  /*
-  // countsObj [{author, countOfBlogs} ...]
-  const countsObj = lodash.countBy(blogs.map(blog => blog.author))
-  const maxVal = Math.max(...Object.values(countsObj))
-
-  const author = Object.entries(countsObj)
-    .find( entry => {
-      return entry[1] === maxVal
-    })[0] // at least one author
-  return { 'author': author, 'blogsCount': maxVal }
-  */
-  const author = result[0]
-  const likesCount = result[1]
-  return { 'author': author, 'likesCount': likesCount }
+  return { 'author': result[0], 'likesCount': result[1] }
 }
 module.exports = {
   dummy, totalLikes, favoriteBlog, mostBlogs, mostLikes
