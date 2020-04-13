@@ -8,10 +8,9 @@ const api = supertest(app)
 beforeEach(async () => {
   await Blog.deleteMany({})
   await Blog.insertMany(helper.initialBlogs)
-  console.log('beforeEach done')
 })
 
-describe('when there is initially some notes saved', () => {
+describe('when there are initially some blogs saved', () => {
   test('blogs are returned as json', async () => {
     await api
       .get('/api/blogs')
@@ -31,8 +30,8 @@ describe('when there is initially some notes saved', () => {
   })
 })
 
-describe('addition of a new note', () => {
-  test('a valid note can be added ', async () => {
+describe('addition of a new blog', () => {
+  test('a valid blog can be added ', async () => {
     const newBlog = {
       author: 'JR',
       title: 'async/await simplifies making async callsJR',
@@ -50,7 +49,6 @@ describe('addition of a new note', () => {
     expect(blogsAtEnd).toHaveLength(helper.initialBlogs.length + 1)
 
     const titles = blogsAtEnd.map(b => b.title)
-    console.log('titles', titles)
     expect(titles).toContain(
       'async/await simplifies making async callsJR'
     )
@@ -107,7 +105,7 @@ describe('addition of a new note', () => {
   })
 })
 
-describe('viewing a specific note', () => {
+describe('viewing a specific blog', () => {
   test('a specific blog can be viewed', async () => {
     const blogsAtStart = await helper.blogsInDb()
 
@@ -121,7 +119,7 @@ describe('viewing a specific note', () => {
     expect(resultBlog.body).toEqual(blogToView)
   })
 })
-describe('deletion of a note', () => {
+describe('deletion of a blog', () => {
   test('a blog can be deleted', async () => {
     const blogsAtStart = await helper.blogsInDb()
     const blogToDelete = blogsAtStart[0]
@@ -141,6 +139,26 @@ describe('deletion of a note', () => {
     expect(titles).not.toContain(blogToDelete.title)
   })
 })
+
+describe('updating a blog', () => {
+  test('updating likes of a blog', async () => {
+    const blogsAtStart = await helper.blogsInDb()
+    const blogToUpdate = blogsAtStart[0]
+    //surely differs from original
+    const newLikes = 9651 !== blogToUpdate.likes?9651:9855
+
+    blogToUpdate.likes = newLikes
+
+    const response = await api
+      .put(`/api/blogs/${blogToUpdate.id}`)
+      .send(blogToUpdate)
+      .expect(200)
+
+    const likes = response.body.likes
+    expect(likes).toBe(newLikes)
+  })
+})
+
 afterAll(() => {
   mongoose.connection.close()
 })

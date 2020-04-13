@@ -8,6 +8,7 @@ const middleware = require('./utils/middleware')
 const logger = require('./utils/logger')
 const mongoose = require('mongoose')
 
+mongoose.set('useFindAndModify', false)
 /* FOR TESTING PURPOSES tee malli tälle
 const list_helper = require('./utils/list_helper')
 console.log('FOR TESTING PURPOSES')
