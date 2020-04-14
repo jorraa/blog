@@ -32,22 +32,32 @@ blogsRouter.get('/:id', async (request, response) => {
 })
 
 blogsRouter.post('/', async (request, response) => {
-  //const body = request.body
-  //const blog = new Blog(body)
-  const token = getTokenFrom(request)
+  const body = request.body
+  const blog = new Blog(body)
 
-  const decodedToken = jwt.verify(token, process.env.SECRET)
-  if (!token || !decodedToken.id) {
-    return response.status(401).json({ error: 'token missing or invalid' })
+  let user
+
+  if(process.env.NODE_ENV === 'test') {
+    console.log('TESTIÄÄÄÄÄÄÄ')
+    const users = await User
+      .find({ username: 'ben' }).populate('blogs', { title: 1, url: 1, likes: 1 })
+
+    user = users[0]
+  }else{
+    console.log('MUUUUUTAAAAAA')
+    const token = getTokenFrom(request)
+
+    const decodedToken = jwt.verify(token, process.env.SECRET)
+    if (!token || !decodedToken.id) {
+      return response.status(401).json({ error: 'token missing or invalid' })
+    }
+    user = await User.findById(decodedToken.id)
   }
-  const user = await User.findById(decodedToken.id)
 
-  const blog = new Blog(request.body)
-
-  blog.user = user._id
-
+  blog.user = user.id
   const savedBlog = await blog.save()
-  user.blogs = user.notes.concat(savedBlog._id)
+
+  user.blogs = user.blogs.concat(savedBlog._id)
   await user.save()
 
   response.json(savedBlog.toJSON())

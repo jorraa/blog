@@ -5,7 +5,7 @@ const app = require('../app')
 const User = require('../models/user')
 const helper = require('./test_helper')
 const api = supertest(app)
-
+const Blog = require('../models/blog')
 //...
 
 describe('when there is initially one user at db', () => {
@@ -179,6 +179,39 @@ describe('creating user, when there is initially empty db', () => {
   })
 })
 
+describe('when there is initially one user with one blog in db', () => {
+  beforeEach(async () => {
+    await Blog.deleteMany({})
+    await User.deleteMany({})
+
+    const passwordHash = await bcrypt.hash('sekret', 10)
+    const user = new User({ username: 'ben', passwordHash, name: 'Ben Bloggaaja' })
+    await user.save()
+    // in blogs router test env käyttää beniä
+
+    const title = 'Penan puutarhassa'
+    const author = 'Pena Paasaaja'
+    const url = 'https://bestblogs.com'
+    const likes = 1
+    const blog = new Blog({ title: title, author: author, url: url, likes: likes })
+    blog.user = user.id
+
+    const savedBlog = await blog.save()
+
+    user.blogs = user.blogs.concat(savedBlog._id)
+    await user.save()
+  })
+
+  test('show user with blogs', async () => {
+    const response = await api
+      .get('/api/users')
+      .expect(200)
+
+    const user = response.body[0]
+    const blog = user.blogs[0]
+    expect('Penan puutarhassa').toBe(blog.title)
+  })
+})
 afterAll(() => {
   mongoose.connection.close()
 })
