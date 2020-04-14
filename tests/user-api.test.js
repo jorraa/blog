@@ -1,8 +1,9 @@
+const mongoose = require('mongoose')
 const bcrypt = require('bcrypt')
 const supertest = require('supertest')
 const app = require('../app')
 const User = require('../models/user')
-const helper = require('./helper')
+const helper = require('./test_helper')
 const api = supertest(app)
 
 //...
@@ -21,8 +22,8 @@ describe('when there is initially one user at db', () => {
     const usersAtStart = await helper.usersInDb()
 
     const newUser = {
-      username: 'mluukkai',
-      name: 'Matti Luukkainen',
+      username: 'jorraa',
+      name: 'Jorma Raatikainen',
       password: 'salainen',
     }
 
@@ -36,6 +37,20 @@ describe('when there is initially one user at db', () => {
     expect(usersAtEnd).toHaveLength(usersAtStart.length + 1)
 
     const usernames = usersAtEnd.map(u => u.username)
+    console.log('usernames', usernames)
     expect(usernames).toContain(newUser.username)
   })
+
+  test('users(root) are returned as json', async () => {
+    await api
+      .get('/api/users')
+      .expect(200)
+      .expect('Content-Type', /application\/json/)
+  })
+
+
+})
+
+afterAll(() => {
+  mongoose.connection.close()
 })
