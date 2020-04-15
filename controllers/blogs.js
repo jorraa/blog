@@ -3,14 +3,6 @@ const Blog = require('../models/blog')
 const User = require('../models/user')
 const jwt = require('jsonwebtoken')
 
-const getTokenFrom = request => {
-  const authorization = request.get('authorization')
-  if (authorization && authorization.toLowerCase().startsWith('bearer ')) {
-    return authorization.substring(7)
-  }
-  return null
-}
-
 blogsRouter.get('/', async (request, response) => {
   const blogs = await Blog
     .find({})
@@ -35,24 +27,11 @@ blogsRouter.post('/', async (request, response) => {
   const body = request.body
   const blog = new Blog(body)
 
-  let user
-
-  if(process.env.NODE_ENV === 'test') {
-    console.log('TESTIÄÄÄÄÄÄÄ')
-    const users = await User
-      .find({ username: 'ben' }).populate('blogs', { title: 1, url: 1, likes: 1 })
-
-    user = users[0]
-  }else{
-    console.log('MUUUUUTAAAAAA')
-    const token = getTokenFrom(request)
-
-    const decodedToken = jwt.verify(token, process.env.SECRET)
-    if (!token || !decodedToken.id) {
-      return response.status(401).json({ error: 'token missing or invalid' })
-    }
-    user = await User.findById(decodedToken.id)
+  const decodedToken = jwt.verify(request.token, process.env.SECRET)
+  if (!request.token || !decodedToken.id) {
+    return response.status(401).json({ error: 'token missing or invalid' })
   }
+  const user = await User.findById(decodedToken.id)
 
   blog.user = user.id
   const savedBlog = await blog.save()
@@ -64,7 +43,19 @@ blogsRouter.post('/', async (request, response) => {
 })
 
 blogsRouter.delete('/:id', async (request, response) => {
+  const decodedToken = jwt.verify(request.token, process.env.SECRET)
+  if (!request.token || !decodedToken.id) {
+    return response.status(401).json({ error: 'token missing or invalid' })
+  }
+  const user = await User.findById(decodedToken.id)
+
+  const blog = await Blog.findById(request.params.id)
+
+  if ( blog.user.toString() !== user.id.toString() ) {
+    return response.status(401).json({ error: 'only blog link creator can remove it' })
+  }
   await Blog.findByIdAndRemove(request.params.id)
+
   response.status(204).end()
 })
 

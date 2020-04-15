@@ -6,7 +6,6 @@ const Blog = require('../models/blog')
 const api = supertest(app)
 const User = require('../models/user')
 const bcrypt = require('bcrypt')
-const jwt = require('jsonwebtoken')
 
 describe('when there are initially some blogs saved', () => {
   beforeEach(async () => {
@@ -36,13 +35,12 @@ describe('when there are initially some blogs saved', () => {
 describe('addition of a new blog', () => {
   const username = 'ben'
   const password = 'salasala'
-  let token = ''
+  let authorization = ''
 
   beforeEach(async () => {
     await Blog.deleteMany({})
     await User.deleteMany({})
 
-    //const password = password
     const passwordHash = await bcrypt.hash(password, 10)
     const user = new User({ username: username, passwordHash, name: 'Ben Bloggaaja' })
 
@@ -57,42 +55,11 @@ describe('addition of a new blog', () => {
       .post('/api/login')
       .send(credentials)
 
-    token = response.body.token
+    authorization = `bearer ${response.body.token}`
   })
-
-  const login = async() => {
-    const credentials = {
-      username: username,
-      password: password
-    }
-
-    const response = await api
-      .post('/api/login')
-      .send(credentials)
-
-    return response.token
-  }
 
   test('a valid blog can be added to blogs', async () => {
     const blogsInStart = helper.blogsInDb
-
-    const loginW = async() => {
-      const credentials = {
-        username: username,
-        password: password
-      }
-
-      const response = await api
-        .post('/api/login')
-        .send(credentials)
-
-      console.log('body', response.body)
-      console.log('token', response.body.token)
-
-      return response.body.token
-    }
-
-    //const token = await login()
 
     const newBlog = {
       author: 'JR',
@@ -100,11 +67,10 @@ describe('addition of a new blog', () => {
       url: 'https://jorma.com/',
       likes: 5
     }
-    const auth = `bearer ${token}`
 
     const response = await api
       .post('/api/blogs')
-      .set('Authorization', auth)
+      .set('Authorization', authorization)
       .send(newBlog)
       .expect(200)
       .expect('Content-Type', /application\/json/)
@@ -139,6 +105,7 @@ describe('addition of a new blog', () => {
 
     await api
       .post('/api/blogs')
+      .set('Authorization', authorization)
       .send(newBlog)
       .expect(400)
 
@@ -157,6 +124,7 @@ describe('addition of a new blog', () => {
 
     await api
       .post('/api/blogs')
+      .set('Authorization', authorization)
       .send(newBlog)
       .expect(400)
 
@@ -174,6 +142,7 @@ describe('addition of a new blog', () => {
 
     const response = await api
       .post('/api/blogs')
+      .set('Authorization', authorization)
       .send(newBlog)
       .expect(200)
 
@@ -202,23 +171,58 @@ describe('viewing a specific blog', () => {
 })
 
 describe('deletion of a blog', () => {
+  const username = 'ben'
+  const password = 'salasala'
+  let authorization = ''
+
   beforeEach(async () => {
+
     await Blog.deleteMany({})
-    await Blog.insertMany(helper.initialBlogs)
+    await User.deleteMany({})
+
+    const passwordHash = await bcrypt.hash(password, 10)
+    const user = new User({ username: username, passwordHash, name: 'Ben Bloggaaja' })
+
+    await user.save()
+
+    const credentials = {
+      username: username,
+      password: password
+    }
+
+    const response = await api
+      .post('/api/login')
+      .send(credentials)
+
+    authorization = `bearer ${response.body.token}`
+
+    const newBlog = {
+      author: 'JR',
+      title: 'async/await simplifies making async callsJR',
+      url: 'https://jorma.com/',
+      likes: 5
+    }
+
+    await api
+      .post('/api/blogs')
+      .set('Authorization', authorization)
+      .send(newBlog)
+      .expect(200)
+      .expect('Content-Type', /application\/json/)
   })
+
   test('a blog can be deleted', async () => {
     const blogsAtStart = await helper.blogsInDb()
     const blogToDelete = blogsAtStart[0]
 
     await api
       .delete(`/api/blogs/${blogToDelete.id}`)
+      .set('Authorization', authorization)
       .expect(204)
 
     const blogsAtEnd = await helper.blogsInDb()
 
-    expect(blogsAtEnd).toHaveLength(
-      helper.initialBlogs.length - 1
-    )
+    expect(blogsAtEnd).toHaveLength(blogsAtStart.length - 1)
 
     const titles = blogsAtEnd.map(r => r.title)
 
@@ -278,7 +282,7 @@ describe('showing blogs with user info ', () => {
       .get('/api/blogs')
       .expect(200)
     const blog = response.body[0]
-    console.log('blog with user', blog.user)
+
     expect('ben').toBe(blog.user.username)
   })
 })
