@@ -6,6 +6,7 @@ const Blog = require('../models/blog')
 const api = supertest(app)
 const User = require('../models/user')
 const bcrypt = require('bcrypt')
+const jwt = require('jsonwebtoken')
 
 describe('when there are initially some blogs saved', () => {
   beforeEach(async () => {
@@ -33,19 +34,65 @@ describe('when there are initially some blogs saved', () => {
 })
 
 describe('addition of a new blog', () => {
+  const username = 'ben'
+  const password = 'salasala'
+  let token = ''
+
   beforeEach(async () => {
     await Blog.deleteMany({})
     await User.deleteMany({})
 
-    const passwordHash = await bcrypt.hash('sekret', 10)
-    const user = new User({ username: 'ben', passwordHash, name: 'Ben Bloggaaja' })
+    //const password = password
+    const passwordHash = await bcrypt.hash(password, 10)
+    const user = new User({ username: username, passwordHash, name: 'Ben Bloggaaja' })
 
     await user.save()
-    // in blogs router test env käyttää beniä
+
+    const credentials = {
+      username: username,
+      password: password
+    }
+
+    const response = await api
+      .post('/api/login')
+      .send(credentials)
+
+    token = response.body.token
   })
+
+  const login = async() => {
+    const credentials = {
+      username: username,
+      password: password
+    }
+
+    const response = await api
+      .post('/api/login')
+      .send(credentials)
+
+    return response.token
+  }
 
   test('a valid blog can be added to blogs', async () => {
     const blogsInStart = helper.blogsInDb
+
+    const loginW = async() => {
+      const credentials = {
+        username: username,
+        password: password
+      }
+
+      const response = await api
+        .post('/api/login')
+        .send(credentials)
+
+      console.log('body', response.body)
+      console.log('token', response.body.token)
+
+      return response.body.token
+    }
+
+    //const token = await login()
 
     const newBlog = {
       author: 'JR',
@@ -53,9 +100,11 @@ describe('addition of a new blog', () => {
       url: 'https://jorma.com/',
       likes: 5
     }
+    const auth = `bearer ${token}`
 
     const response = await api
       .post('/api/blogs')
+      .set('Authorization', auth)
       .send(newBlog)
       .expect(200)
       .expect('Content-Type', /application\/json/)
